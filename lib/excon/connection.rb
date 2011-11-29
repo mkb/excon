@@ -5,7 +5,6 @@ module Excon
     CR_NL     = "\r\n"
     HTTP_1_1  = " HTTP/1.1\r\n"
     FORCE_ENC = CR_NL.respond_to?(:force_encoding)
-    DEFAULT_RETRY_LIMIT = 4
 
     # Initializes a new Connection instance
     #   @param [String] url The destination URL
