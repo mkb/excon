@@ -38,6 +38,8 @@ module Excon
       elsif params.has_key?(:proxy)
         @proxy = setup_proxy(params[:proxy])
       end
+      
+      self.retry_limit = params[:retry_limit] || DEFAULT_RETRY_LIMIT
 
       if @connection[:scheme] == 'https'
         # use https_proxy if that has been specified
