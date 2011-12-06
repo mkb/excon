@@ -183,7 +183,8 @@ module Excon
         end
       end
     rescue => request_error
-      if params[:idempotent] && [Excon::Errors::SocketError, Excon::Errors::HTTPStatusError].any? {|ex| request_error.kind_of? ex }
+      if params[:idempotent] && [Excon::Errors::SocketError,
+          Excon::Errors::HTTPStatusError].any? {|ex| request_error.kind_of? ex }
         retries_remaining ||= retry_limit
         retries_remaining -= 1
         if retries_remaining > 0
@@ -194,12 +195,12 @@ module Excon
           retry
         else
           ActiveSupport::Notifications.instrument('excon.request.error', 
-              :payload => request_error)
+              :error => request_error)
           raise(request_error)
         end
       else
         ActiveSupport::Notifications.instrument('excon.request.error', 
-            :payload => request_error)
+            :error => request_error)
         raise(request_error)
       end
     end

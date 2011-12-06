@@ -62,7 +62,6 @@ Shindo.tests('Instrumentation of connections') do
       response = connection.request(:method => :get, :path => '/some-path')
     end
 
-    p @events.inspect
     @events.select{|e| e.name =~ /error/}.count
   end
   Excon.mock = false
