@@ -68,7 +68,6 @@ module Excon
     #     @option params [Hash]   :query appended to the 'scheme://host:port/path/' in the form of '?key=value'
     #     @option params [String] :scheme The protocol; 'https' causes OpenSSL to be used
     def request(params, &block)
-      puts "gug: #{retries_remaining}" rescue
       # is_retry ||= false
       if params[:idempotent] && is_retry ||= false
         event_name = 'excon.request.retry'
@@ -76,7 +75,6 @@ module Excon
         event_name = 'excon.request'
       end
       ActiveSupport::Notifications.instrument(event_name) do
-        puts "enter"
         begin
           # connection has defaults, merge in new params to override
           params = @connection.merge(params)
@@ -193,7 +191,6 @@ module Excon
           if params[:body].respond_to?(:pos=)
             params[:body].pos = 0
           end
-          puts "Remaining: #{retries_remaining}"
           is_retry = true
           retry
         else

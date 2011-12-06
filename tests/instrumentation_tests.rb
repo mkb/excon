@@ -4,7 +4,6 @@ require 'ruby_debug'
 Shindo.tests('Instrumentation of connections') do
   # Excon.mock = true
 
-
   before do
     @events = []
   end
@@ -19,17 +18,16 @@ Shindo.tests('Instrumentation of connections') do
       ActiveSupport::Notifications.subscribe(/excon/) do |*args|
         @events << ActiveSupport::Notifications::Event.new(*args)
       end
-  
+
       Excon.get('http://localhost:9292')
-  
+
       @events.first.name
     end
   end
 
   Excon.mock = true
-  tests('notify on retry').returns(4) do
+  tests('notify on retry').returns(3) do
     ActiveSupport::Notifications.subscribe(/excon/) do |*args|
-      puts "BLOP"
       @events << ActiveSupport::Notifications::Event.new(*args)
     end
 
@@ -46,7 +44,6 @@ Shindo.tests('Instrumentation of connections') do
     connection = Excon.new('http://127.0.0.1:9292')
     response = connection.request(:method => :get, :idempotent => true, :path => '/some-path')
 
-    p @events.collect(&:name)
     @events.select{|e| e.name =~ /retry/}.count
   end
   Excon.mock = false
