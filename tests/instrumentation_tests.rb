@@ -1,5 +1,4 @@
 require 'active_support/notifications'
-require 'ruby_debug'
 
 Shindo.tests('Instrumentation of connections') do
   # Excon.mock = true

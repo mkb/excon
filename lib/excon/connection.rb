@@ -1,3 +1,5 @@
+require 'active_support/notifications'
+
 module Excon
   class Connection
     attr_reader :connection, :proxy
