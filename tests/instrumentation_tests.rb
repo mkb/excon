@@ -3,16 +3,13 @@ require 'active_support/notifications'
 Shindo.tests('Instrumentation of connections') do
   # Excon.mock = true
 
-  before do
-    @events = []
-  end
-
   after do
     ActiveSupport::Notifications.unsubscribe("excon")    #
     Excon.stubs.clear
   end
 
   with_rackup('request_methods.ru') do
+    @events = []
     tests('basic notification').returns('excon.request') do
       ActiveSupport::Notifications.subscribe(/excon/) do |*args|
         @events << ActiveSupport::Notifications::Event.new(*args)
@@ -26,6 +23,7 @@ Shindo.tests('Instrumentation of connections') do
 
   Excon.mock = true
   tests('notify on retry').returns(3) do
+    @events = []
     ActiveSupport::Notifications.subscribe(/excon/) do |*args|
       @events << ActiveSupport::Notifications::Event.new(*args)
     end
@@ -48,6 +46,7 @@ Shindo.tests('Instrumentation of connections') do
 
   Excon.mock = true
   tests('notify on error').returns(1) do
+    @events = []
     ActiveSupport::Notifications.subscribe(/excon/) do |*args|
       @events << ActiveSupport::Notifications::Event.new(*args)
     end
@@ -67,6 +66,7 @@ Shindo.tests('Instrumentation of connections') do
 
   Excon.mock = true
   tests('filtering').returns(2) do
+    @events = []
     ActiveSupport::Notifications.subscribe(/excon.request/) do |*args|
       @events << ActiveSupport::Notifications::Event.new(*args)
     end
@@ -84,10 +84,10 @@ Shindo.tests('Instrumentation of connections') do
       response = connection.request(:method => :get, :path => '/some-path')
     end
 
-    returns(true) {@events.any? {|e| e.name =~ /request/}}
-    returns(false) {@events.any? {|e| e.name =~ /retry/}}
-    returns(true) {@events.any? {|e| e.name =~ /error/}}
-    @events.select{|e| e.name =~ /retry/}.count
+    returns(true) {@events.any? {|e| e.name.match(/request/)}}
+    returns(false) {@events.any? {|e| e.name.match(/retry/)}}
+    returns(true) {@events.any? {|e| e.name.match(/error/)}}
+    @events.select{|e| e.name =~ /excon/}.count
   end
   Excon.mock = false
 
