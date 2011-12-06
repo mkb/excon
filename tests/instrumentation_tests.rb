@@ -46,11 +46,30 @@ Shindo.tests('Instrumentation of connections') do
 
     @events.select{|e| e.name =~ /retry/}.count
   end
+
+  Excon.mock = true
+  tests('notify on error').returns(1) do
+    ActiveSupport::Notifications.subscribe(/excon/) do |*args|
+      @events << ActiveSupport::Notifications::Event.new(*args)
+    end
+
+    Excon.stub({:method => :get}) { |params|
+      raise Excon::Errors::SocketError.new(Exception.new "Mock Error")
+    }
+
+    connection = Excon.new('http://127.0.0.1:9292')
+    raises(Excon::Errors::SocketError) do
+      response = connection.request(:method => :get, :path => '/some-path')
+    end
+
+    p @events.inspect
+    @events.select{|e| e.name =~ /error/}.count
+  end
   Excon.mock = false
 
-  tests('notify on error')
   tests('filtering')
   tests('indicates duration')
+  tests('does not require activesupport')
   # excon.request
   # excon.error
   # excon.retry
