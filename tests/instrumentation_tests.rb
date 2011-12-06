@@ -91,9 +91,26 @@ Shindo.tests('Instrumentation of connections') do
   end
   Excon.mock = false
 
-  tests('indicates duration')
+  Excon.mock = true
+  tests('indicates duration').returns(true) do
+    @events = []
+    ActiveSupport::Notifications.subscribe(/excon/) do |*args|
+      @events << ActiveSupport::Notifications::Event.new(*args)
+    end
+
+    delay = 30
+    Excon.stub({:method => :get}) { |params|
+      Delorean.jump delay
+      {:body => params[:body], :headers => params[:headers], :status => 200}
+    }
+
+    connection = Excon.new('http://127.0.0.1:9292')
+    response = connection.request(:method => :get, :path => '/some-path')
+
+    @events.select{|e| e.name =~ /retry/}.count
+    (@events.first.duration/1000 - delay).abs < 1
+  end
+  Excon.mock = false
+
   tests('does not require activesupport')
-  # excon.request
-  # excon.error
-  # excon.retry
 end
