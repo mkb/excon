@@ -1,5 +1,3 @@
-require 'active_support/notifications'
-
 module Excon
   class Connection
     attr_reader :connection, :proxy
@@ -33,7 +31,7 @@ module Excon
         :read_timeout     => 60,
         :scheme           => uri.scheme,
         :write_timeout    => 60,
-        :instrumentor     => ActiveSupport::Notifications
+        :instrumentor     => nil
       }.merge!(params)
 
       # use proxy from the environment if present
@@ -96,13 +94,13 @@ module Excon
           is_retry = true
           retry
         else
-          ActiveSupport::Notifications.instrument('excon.error', 
-              :error => request_error)
+          @instrumentor.instrument('excon.error', 
+              :error => request_error) if @instrumentor
           raise(request_error)
         end
       else
-        ActiveSupport::Notifications.instrument('excon.error', 
-            :error => request_error)
+        @instrumentor.instrument('excon.error', 
+            :error => request_error) if @instrumentor
         raise(request_error)
       end
     end

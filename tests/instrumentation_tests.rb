@@ -8,18 +8,24 @@ Shindo.tests('Instrumentation of connections') do
     Excon.stubs.clear
   end
 
-  with_rackup('request_methods.ru') do
+  Excon.mock = true
+  tests('basic notification').returns('excon.request') do
     @events = []
-    tests('basic notification').returns('excon.request') do
-      ActiveSupport::Notifications.subscribe(/excon/) do |*args|
-        @events << ActiveSupport::Notifications::Event.new(*args)
-      end
-
-      Excon.get('http://localhost:9292')
-
-      @events.first.name
+    ActiveSupport::Notifications.subscribe(/excon/) do |*args|
+      @events << ActiveSupport::Notifications::Event.new(*args)
     end
+
+    Excon.stub({:method => :get}) { |params|
+      {:body => params[:body], :headers => params[:headers], :status => 200}
+    }
+
+    connection = Excon.new('http://127.0.0.1:9292', 
+        :instrumentor => ActiveSupport::Notifications)
+    connection.get()
+
+    @events.first.name
   end
+  Excon.mock = false
 
   Excon.mock = true
   tests('notify on retry').returns(3) do
@@ -38,7 +44,8 @@ Shindo.tests('Instrumentation of connections') do
       end
     }
 
-    connection = Excon.new('http://127.0.0.1:9292')
+    connection = Excon.new('http://127.0.0.1:9292', 
+        :instrumentor => ActiveSupport::Notifications)
     response = connection.request(:method => :get, :idempotent => true, :path => '/some-path')
 
     @events.select{|e| e.name =~ /retry/}.count
@@ -55,7 +62,8 @@ Shindo.tests('Instrumentation of connections') do
       raise Excon::Errors::SocketError.new(Exception.new "Mock Error")
     }
 
-    connection = Excon.new('http://127.0.0.1:9292')
+    connection = Excon.new('http://127.0.0.1:9292', 
+        :instrumentor => ActiveSupport::Notifications)
     raises(Excon::Errors::SocketError) do
       response = connection.request(:method => :get, :path => '/some-path')
     end
@@ -79,7 +87,8 @@ Shindo.tests('Instrumentation of connections') do
       raise Excon::Errors::SocketError.new(Exception.new "Mock Error")
     }
 
-    connection = Excon.new('http://127.0.0.1:9292')
+    connection = Excon.new('http://127.0.0.1:9292', 
+        :instrumentor => ActiveSupport::Notifications)
     raises(Excon::Errors::SocketError) do
       response = connection.request(:method => :get, :path => '/some-path')
     end
@@ -104,7 +113,8 @@ Shindo.tests('Instrumentation of connections') do
       {:body => params[:body], :headers => params[:headers], :status => 200}
     }
 
-    connection = Excon.new('http://127.0.0.1:9292')
+    connection = Excon.new('http://127.0.0.1:9292', 
+        :instrumentor => ActiveSupport::Notifications)
     response = connection.request(:method => :get, :path => '/some-path')
 
     @events.select{|e| e.name =~ /retry/}.count
