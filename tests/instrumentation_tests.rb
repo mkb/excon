@@ -1,12 +1,26 @@
 require 'active_support/notifications'
 
+class SimpleInstrumentor
+  class << self
+    attr_accessor :events
+
+    def instrument(name, params = {}, &block)
+      @events ||= []
+      @events << name
+    end
+  end
+end
+
 Shindo.tests('Instrumentation of connections') do
   before do
     Excon.mock = true
   end
 
   after do
-    ActiveSupport::Notifications.unsubscribe("excon")    #
+    ActiveSupport::Notifications.unsubscribe("excon")
+    ActiveSupport::Notifications.unsubscribe("excon.request")
+    ActiveSupport::Notifications.unsubscribe("excon.retry")
+    ActiveSupport::Notifications.unsubscribe("excon.error")
     Excon.stubs.clear
     Excon.mock = false
   end
@@ -81,6 +95,22 @@ Shindo.tests('Instrumentation of connections') do
     returns(true) {@events.any? {|e| e.name.match(/request/)}}
     returns(false) {@events.any? {|e| e.name.match(/retry/)}}
     returns(true) {@events.any? {|e| e.name.match(/error/)}}
+    @events.select{|e| e.name =~ /excon/}.count
+  end
+
+  tests('more filtering').returns(3) do
+    subscribe(/excon.retry/)
+    Excon.stub({:method => :get}) { |params|
+      raise Excon::Errors::SocketError.new(Exception.new "Mock Error")
+    }
+
+    raises(Excon::Errors::SocketError) do
+      make_request(true)
+    end
+
+    returns(false) {@events.any? {|e| e.name.match(/request/)}}
+    returns(true) {@events.any? {|e| e.name.match(/retry/)}}
+    returns(false) {@events.any? {|e| e.name.match(/error/)}}
     @events.select{|e| e.name =~ /excon/}.count
   end
 
