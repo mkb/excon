@@ -142,9 +142,27 @@ Shindo.tests('Instrumentation of connections') do
         'excon.retry', 'excon.error']
   end
 
-  tests('allows random instrumentor instead of ActiveSupport')
-  tests('does not generate events when not activated')
-  tests('works unmocked')
+  tests('does not generate events when not provided').returns(0) do
+    subscribe(/excon/)
+    Excon.stub({:method => :get}) { |params|
+      {:body => params[:body], :headers => params[:headers], :status => 200}
+    }
+
+    connection = Excon.new('http://127.0.0.1:9292')
+    connection.get(:idempotent => true)
+    @events.count
+  end
+
+
+  with_rackup('basic.ru') do
+    tests('works unmocked').returns('excon.request') do
+      Excon.mock = false
+      subscribe(/excon/)
+
+      make_request
+      @events.first.name
+    end
+  end
 end
 
 
