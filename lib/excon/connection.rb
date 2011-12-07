@@ -95,17 +95,17 @@ module Excon
           is_retry = true
           retry
         else
-          @instrumentor.instrument('excon.error', 
+          @instrumentor.instrument('excon.error',
               :error => request_error) if @instrumentor
           raise(request_error)
         end
       else
-        @instrumentor.instrument('excon.error', 
+        @instrumentor.instrument('excon.error',
             :error => request_error) if @instrumentor
         raise(request_error)
       end
     end
-    
+
     def request_do(params, &block)
       begin
         # connection has defaults, merge in new params to override
