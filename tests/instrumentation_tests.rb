@@ -1,5 +1,4 @@
 require 'active_support/notifications'
-require 'ruby-debug'
 
 Shindo.tests('Instrumentation of connections') do
   before do
@@ -18,14 +17,14 @@ Shindo.tests('Instrumentation of connections') do
       @events << ActiveSupport::Notifications::Event.new(*args)
     end
   end
-  
+
   def make_request(idempotent = false)
     connection = Excon.new('http://127.0.0.1:9292',
         :instrumentor => ActiveSupport::Notifications)
     if idempotent
       connection.get(:idempotent => true)
     else
-      connection.get()    
+      connection.get()
     end
   end
 
