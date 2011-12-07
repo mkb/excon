@@ -59,6 +59,7 @@ Gem::Specification.new do |s|
   s.add_development_dependency('sinatra')
   s.add_development_dependency('activesupport', '~>3.1.3')
   s.add_development_dependency('delorean')
+  s.add_development_dependency('ruby-debug19')
 
   ## Leave this section as-is. It will be automatically generated from the
   ## contents of your Git repository via the gemspec task. DO NOT REMOVE

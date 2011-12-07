@@ -1,39 +1,46 @@
 require 'active_support/notifications'
+require 'ruby-debug'
 
 Shindo.tests('Instrumentation of connections') do
-  # Excon.mock = true
+  before do
+    Excon.mock = true
+  end
 
   after do
     ActiveSupport::Notifications.unsubscribe("excon")    #
     Excon.stubs.clear
+    Excon.mock = false
   end
 
-  Excon.mock = true
-  tests('basic notification').returns('excon.request') do
+  def subscribe(match)
     @events = []
-    ActiveSupport::Notifications.subscribe(/excon/) do |*args|
+    ActiveSupport::Notifications.subscribe(match) do |*args|
       @events << ActiveSupport::Notifications::Event.new(*args)
     end
+  end
+  
+  def make_request(idempotent = false)
+    connection = Excon.new('http://127.0.0.1:9292',
+        :instrumentor => ActiveSupport::Notifications)
+    if idempotent
+      connection.get(:idempotent => true)
+    else
+      connection.get()    
+    end
+  end
 
+  tests('basic notification').returns('excon.request') do
+    subscribe(/excon/)
     Excon.stub({:method => :get}) { |params|
       {:body => params[:body], :headers => params[:headers], :status => 200}
     }
 
-    connection = Excon.new('http://127.0.0.1:9292', 
-        :instrumentor => ActiveSupport::Notifications)
-    connection.get()
-
+    make_request
     @events.first.name
   end
-  Excon.mock = false
 
-  Excon.mock = true
   tests('notify on retry').returns(3) do
-    @events = []
-    ActiveSupport::Notifications.subscribe(/excon/) do |*args|
-      @events << ActiveSupport::Notifications::Event.new(*args)
-    end
-
+    subscribe(/excon/)
     run_count = 0
     Excon.stub({:method => :get}) { |params|
       run_count += 1
@@ -44,53 +51,32 @@ Shindo.tests('Instrumentation of connections') do
       end
     }
 
-    connection = Excon.new('http://127.0.0.1:9292', 
-        :instrumentor => ActiveSupport::Notifications)
-    response = connection.request(:method => :get, :idempotent => true, :path => '/some-path')
-
+    make_request(true)
     @events.select{|e| e.name =~ /retry/}.count
   end
 
-  Excon.mock = true
   tests('notify on error').returns(1) do
-    @events = []
-    ActiveSupport::Notifications.subscribe(/excon/) do |*args|
-      @events << ActiveSupport::Notifications::Event.new(*args)
-    end
-
+    subscribe(/excon/)
     Excon.stub({:method => :get}) { |params|
       raise Excon::Errors::SocketError.new(Exception.new "Mock Error")
     }
 
-    connection = Excon.new('http://127.0.0.1:9292', 
-        :instrumentor => ActiveSupport::Notifications)
     raises(Excon::Errors::SocketError) do
-      response = connection.request(:method => :get, :path => '/some-path')
+      make_request
     end
 
     @events.select{|e| e.name =~ /error/}.count
   end
-  Excon.mock = false
 
-  Excon.mock = true
   tests('filtering').returns(2) do
-    @events = []
-    ActiveSupport::Notifications.subscribe(/excon.request/) do |*args|
-      @events << ActiveSupport::Notifications::Event.new(*args)
-    end
-
-    ActiveSupport::Notifications.subscribe(/excon.error/) do |*args|
-      @events << ActiveSupport::Notifications::Event.new(*args)
-    end
-
+    subscribe(/excon.request/)
+    subscribe(/excon.error/)
     Excon.stub({:method => :get}) { |params|
       raise Excon::Errors::SocketError.new(Exception.new "Mock Error")
     }
 
-    connection = Excon.new('http://127.0.0.1:9292', 
-        :instrumentor => ActiveSupport::Notifications)
     raises(Excon::Errors::SocketError) do
-      response = connection.request(:method => :get, :path => '/some-path')
+      make_request(true)
     end
 
     returns(true) {@events.any? {|e| e.name.match(/request/)}}
@@ -98,29 +84,20 @@ Shindo.tests('Instrumentation of connections') do
     returns(true) {@events.any? {|e| e.name.match(/error/)}}
     @events.select{|e| e.name =~ /excon/}.count
   end
-  Excon.mock = false
 
-  Excon.mock = true
   tests('indicates duration').returns(true) do
-    @events = []
-    ActiveSupport::Notifications.subscribe(/excon/) do |*args|
-      @events << ActiveSupport::Notifications::Event.new(*args)
-    end
-
+    subscribe(/excon/)
     delay = 30
     Excon.stub({:method => :get}) { |params|
       Delorean.jump delay
       {:body => params[:body], :headers => params[:headers], :status => 200}
     }
 
-    connection = Excon.new('http://127.0.0.1:9292', 
-        :instrumentor => ActiveSupport::Notifications)
-    response = connection.request(:method => :get, :path => '/some-path')
-
-    @events.select{|e| e.name =~ /retry/}.count
+    make_request
     (@events.first.duration/1000 - delay).abs < 1
   end
-  Excon.mock = false
 
-  tests('does not require activesupport')
+  tests('filtering the opposite way')
+  tests('allows random instrumentor instead of ActiveSupport')
+  tests('works unmocked')
 end
