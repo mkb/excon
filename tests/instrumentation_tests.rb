@@ -46,7 +46,6 @@ Shindo.tests('Instrumentation of connections') do
   tests('basic notification').returns('excon.request') do
     subscribe(/excon/)
     Excon.stub({:method => :get}) { |params|
-      puts 1
       {:body => params[:body], :headers => params[:headers], :status => 200}
     }
 
@@ -58,7 +57,6 @@ Shindo.tests('Instrumentation of connections') do
     subscribe(/excon/)
     run_count = 0
     Excon.stub({:method => :get}) { |params|
-      puts 2
       run_count += 1
       if run_count <= 3 # First 3 calls fail.
         raise Excon::Errors::SocketError.new(Exception.new "Mock Error")
@@ -74,7 +72,6 @@ Shindo.tests('Instrumentation of connections') do
   tests('notify on error').returns(1) do
     subscribe(/excon/)
     Excon.stub({:method => :get}) { |params|
-      puts 3
       raise Excon::Errors::SocketError.new(Exception.new "Mock Error")
     }
 
@@ -89,7 +86,6 @@ Shindo.tests('Instrumentation of connections') do
     subscribe(/excon.request/)
     subscribe(/excon.error/)
     Excon.stub({:method => :get}) { |params|
-      puts 4
       raise Excon::Errors::SocketError.new(Exception.new "Mock Error")
     }
 
@@ -106,7 +102,6 @@ Shindo.tests('Instrumentation of connections') do
   tests('more filtering').returns(3) do
     subscribe(/excon.retry/)
     Excon.stub({:method => :get}) { |params|
-      puts 5
       raise Excon::Errors::SocketError.new(Exception.new "Mock Error")
     }
 
@@ -124,7 +119,6 @@ Shindo.tests('Instrumentation of connections') do
     subscribe(/excon/)
     delay = 30
     Excon.stub({:method => :get}) { |params|
-      puts 6
       Delorean.jump delay
       {:body => params[:body], :headers => params[:headers], :status => 200}
     }
@@ -134,9 +128,7 @@ Shindo.tests('Instrumentation of connections') do
   end
 
   tests('use our own instrumentor').returns(true) do
-    puts "our own instrumentor"
     Excon.stub({:method => :get}) { |params|
-      puts "BONK"
       raise Excon::Errors::SocketError.new(Exception.new "Mock Error")
     }
 
@@ -146,7 +138,6 @@ Shindo.tests('Instrumentation of connections') do
       connection.get(:idempotent => true)
     end
 
-    p SimpleInstrumentor.events
     SimpleInstrumentor.events == ['excon.request', 'excon.retry', 'excon.retry', 
         'excon.retry', 'excon.error']
   end
