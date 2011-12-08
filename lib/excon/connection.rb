@@ -21,17 +21,18 @@ module Excon
     def initialize(url, params = {})
       uri = URI.parse(url)
       @connection = {
-        :connect_timeout  => 60,
-        :headers          => {},
-        :host             => uri.host,
-        :mock             => Excon.mock,
-        :path             => uri.path,
-        :port             => uri.port.to_s,
-        :query            => uri.query,
-        :read_timeout     => 60,
-        :scheme           => uri.scheme,
-        :write_timeout    => 60,
-        :instrumentor     => nil
+        :connect_timeout   => 60,
+        :headers           => {},
+        :host              => uri.host,
+        :mock              => Excon.mock,
+        :path              => uri.path,
+        :port              => uri.port.to_s,
+        :query             => uri.query,
+        :read_timeout      => 60,
+        :scheme            => uri.scheme,
+        :write_timeout     => 60,
+        :instrumentor      => nil,
+        :instrumentor_name => 'excon'
       }.merge!(params)
 
       # use proxy from the environment if present
@@ -43,6 +44,7 @@ module Excon
 
       self.retry_limit = params[:retry_limit] || DEFAULT_RETRY_LIMIT
       @instrumentor = @connection[:instrumentor]
+      @instrumentor_name = @connection[:instrumentor_name]
 
       if @connection[:scheme] == 'https'
         # use https_proxy if that has been specified
@@ -72,9 +74,9 @@ module Excon
     def request(params, &block)
       if @instrumentor
         if params[:idempotent] && is_retry ||= false
-          event_name = 'excon.retry'
+          event_name = "#{@instrumentor_name}.retry"
         else
-          event_name = 'excon.request'
+          event_name = "#{@instrumentor_name}.request"
         end
         @instrumentor.instrument(event_name) do
           _request(params, &block)

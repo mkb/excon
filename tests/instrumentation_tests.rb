@@ -153,6 +153,21 @@ Shindo.tests('Instrumentation of connections') do
     @events.count
   end
 
+  tests('allows setting the prefix').returns(true) do
+    subscribe(/gug/)
+    Excon.stub({:method => :get}) { |params|
+      {:body => params[:body], :headers => params[:headers], :status => 200}
+    }
+
+    connection = Excon.new('http://127.0.0.1:9292',
+        :instrumentor => ActiveSupport::Notifications, :instrumentor_name => 'gug')
+    connection.get(:idempotent => true)
+    @events.first.name == "gug.request"
+  end
+
+
+  tests('captures host, port, and path')
+
 
   with_rackup('basic.ru') do
     tests('works unmocked').returns('excon.request') do
