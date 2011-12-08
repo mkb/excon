@@ -80,20 +80,20 @@ Shindo.tests('Instrumentation of connections') do
     subscribe(/excon/)
     stub_retries
     make_request(true)
-    @events.select{|e| e.name =~ /retry/}.count
+    @events.count{|e| e.name =~ /retry/}
   end
 
-  tests('notify on error').returns(1) do
+  tests('notify on error').returns(true) do
     subscribe(/excon/)
     stub_failure
     raises(Excon::Errors::SocketError) do
       make_request
     end
 
-    @events.select{|e| e.name =~ /error/}.count
+    @events.any?{|e| e.name =~ /error/}
   end
 
-  tests('filtering').returns(2) do
+  tests('filtering').returns(['excon.request', 'excon.error']) do
     subscribe(/excon.request/)
     subscribe(/excon.error/)
     stub_failure
@@ -101,23 +101,17 @@ Shindo.tests('Instrumentation of connections') do
       make_request(true)
     end
 
-    returns(true) {@events.any? {|e| e.name.match(/request/)}}
-    returns(false) {@events.any? {|e| e.name.match(/retry/)}}
-    returns(true) {@events.any? {|e| e.name.match(/error/)}}
-    @events.select{|e| e.name =~ /excon/}.count
+    @events.map(&:name)
   end
 
-  tests('more filtering').returns(3) do
+  tests('more filtering').returns(['excon.retry', 'excon.retry', 'excon.retry']) do
     subscribe(/excon.retry/)
     stub_failure
     raises(Excon::Errors::SocketError) do
       make_request(true)
     end
 
-    returns(false) {@events.any? {|e| e.name.match(/request/)}}
-    returns(true) {@events.any? {|e| e.name.match(/retry/)}}
-    returns(false) {@events.any? {|e| e.name.match(/error/)}}
-    @events.select{|e| e.name =~ /excon/}.count
+    @events.map(&:name)
   end
 
   tests('indicates duration').returns(true) do
@@ -130,9 +124,9 @@ Shindo.tests('Instrumentation of connections') do
   tests('use our own instrumentor').returns(
       ['excon.request', 'excon.retry', 'excon.retry', 'excon.retry', 'excon.error']) do
     stub_failure
+    connection = Excon.new('http://127.0.0.1:9292',
+        :instrumentor => SimpleInstrumentor)
     raises(Excon::Errors::SocketError) do
-      connection = Excon.new('http://127.0.0.1:9292',
-          :instrumentor => SimpleInstrumentor)
       connection.get(:idempotent => true)
     end
 
@@ -159,9 +153,9 @@ Shindo.tests('Instrumentation of connections') do
     @events.map(&:name)
   end
 
-
-  tests('captures host, port, and path')
-
+  tests('captures host, port, and path') do
+    
+  end
 
   with_rackup('basic.ru') do
     tests('works unmocked').returns('excon.request') do
