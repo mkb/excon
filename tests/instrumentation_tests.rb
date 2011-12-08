@@ -80,7 +80,7 @@ Shindo.tests('Instrumentation of connections') do
     subscribe(/excon/)
     stub_success
     make_request
-    @events.first.payload.keys & [:host, :path, :port, :scheme]
+    [:host, :path, :port, :scheme].select {|k| @events.first.payload.has_key? k}
   end
 
   tests('notify on retry').returns(3) do
