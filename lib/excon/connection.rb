@@ -18,6 +18,8 @@ module Excon
     #     @option params [String] :scheme The protocol; 'https' causes OpenSSL to be used
     #     @option params [String] :proxy Proxy server; e.g. 'http://myproxy.com:8888'
     #     @option params [Fixnum] :retry_limit Set how many times we'll retry a failed request.  (Default 4)
+    #     @option params [Class] :instrumentor Responds to #instrument as in ActiveSupport::Notifications
+    #     @option params [String] :instrumentor_name Name prefix for #instrument events.  Defaults to 'excon'
     def initialize(url, params = {})
       uri = URI.parse(url)
       @connection = {
