@@ -43,8 +43,10 @@ Shindo.tests('Instrumentation of connections') do
     end
   end
 
+  REQUEST_DELAY_SECONDS = 30
   def stub_success
     Excon.stub({:method => :get}) { |params|
+      Delorean.jump REQUEST_DELAY_SECONDS
       {:body => params[:body], :headers => params[:headers], :status => 200}
     }
   end
@@ -120,17 +122,13 @@ Shindo.tests('Instrumentation of connections') do
 
   tests('indicates duration').returns(true) do
     subscribe(/excon/)
-    delay = 30
-    Excon.stub({:method => :get}) { |params|
-      Delorean.jump delay
-      {:body => params[:body], :headers => params[:headers], :status => 200}
-    }
-
+    stub_success
     make_request
-    (@events.first.duration/1000 - delay).abs < 1
+    (@events.first.duration/1000 - REQUEST_DELAY_SECONDS).abs < 1
   end
 
-  tests('use our own instrumentor').returns(true) do
+  tests('use our own instrumentor').returns(
+      ['excon.request', 'excon.retry', 'excon.retry', 'excon.retry', 'excon.error']) do
     stub_failure
     raises(Excon::Errors::SocketError) do
       connection = Excon.new('http://127.0.0.1:9292',
@@ -138,8 +136,7 @@ Shindo.tests('Instrumentation of connections') do
       connection.get(:idempotent => true)
     end
 
-    SimpleInstrumentor.events == ['excon.request', 'excon.retry', 'excon.retry',
-        'excon.retry', 'excon.error']
+    SimpleInstrumentor.events
   end
 
   tests('does not generate events when not provided').returns(0) do
