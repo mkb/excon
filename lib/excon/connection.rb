@@ -80,7 +80,7 @@ module Excon
         else
           event_name = "#{@instrumentor_name}.request"
         end
-        @instrumentor.instrument(event_name) do
+        @instrumentor.instrument(event_name, @connection) do
           _request(params, &block)
         end
       else

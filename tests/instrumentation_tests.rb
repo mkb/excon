@@ -76,6 +76,13 @@ Shindo.tests('Instrumentation of connections') do
     @events.first.name
   end
 
+  tests('captures scheme, host, port, and path').returns([:host, :path, :port, :scheme]) do
+    subscribe(/excon/)
+    stub_success
+    make_request
+    @events.first.payload.keys.sort & [:host, :path, :port, :scheme]
+  end
+
   tests('notify on retry').returns(3) do
     subscribe(/excon/)
     stub_retries
@@ -151,10 +158,6 @@ Shindo.tests('Instrumentation of connections') do
       connection.get(:idempotent => true)
     end
     @events.map(&:name)
-  end
-
-  tests('captures host, port, and path') do
-    
   end
 
   with_rackup('basic.ru') do
