@@ -43,18 +43,13 @@ Shindo.tests('Instrumentation of connections') do
     end
   end
 
-  tests('basic notification').returns('excon.request') do
-    subscribe(/excon/)
+  def stub_success
     Excon.stub({:method => :get}) { |params|
       {:body => params[:body], :headers => params[:headers], :status => 200}
     }
-
-    make_request
-    @events.first.name
   end
 
-  tests('notify on retry').returns(3) do
-    subscribe(/excon/)
+  def stub_retries
     run_count = 0
     Excon.stub({:method => :get}) { |params|
       run_count += 1
@@ -64,17 +59,31 @@ Shindo.tests('Instrumentation of connections') do
         {:body => params[:body], :headers => params[:headers], :status => 200}
       end
     }
+  end
 
+  def stub_failure
+    Excon.stub({:method => :get}) { |params|
+      raise Excon::Errors::SocketError.new(Exception.new "Mock Error")
+    }
+  end
+
+  tests('basic notification').returns('excon.request') do
+    subscribe(/excon/)
+    stub_success
+    make_request
+    @events.first.name
+  end
+
+  tests('notify on retry').returns(3) do
+    subscribe(/excon/)
+    stub_retries
     make_request(true)
     @events.select{|e| e.name =~ /retry/}.count
   end
 
   tests('notify on error').returns(1) do
     subscribe(/excon/)
-    Excon.stub({:method => :get}) { |params|
-      raise Excon::Errors::SocketError.new(Exception.new "Mock Error")
-    }
-
+    stub_failure
     raises(Excon::Errors::SocketError) do
       make_request
     end
@@ -85,10 +94,7 @@ Shindo.tests('Instrumentation of connections') do
   tests('filtering').returns(2) do
     subscribe(/excon.request/)
     subscribe(/excon.error/)
-    Excon.stub({:method => :get}) { |params|
-      raise Excon::Errors::SocketError.new(Exception.new "Mock Error")
-    }
-
+    stub_failure
     raises(Excon::Errors::SocketError) do
       make_request(true)
     end
@@ -101,10 +107,7 @@ Shindo.tests('Instrumentation of connections') do
 
   tests('more filtering').returns(3) do
     subscribe(/excon.retry/)
-    Excon.stub({:method => :get}) { |params|
-      raise Excon::Errors::SocketError.new(Exception.new "Mock Error")
-    }
-
+    stub_failure
     raises(Excon::Errors::SocketError) do
       make_request(true)
     end
@@ -128,10 +131,7 @@ Shindo.tests('Instrumentation of connections') do
   end
 
   tests('use our own instrumentor').returns(true) do
-    Excon.stub({:method => :get}) { |params|
-      raise Excon::Errors::SocketError.new(Exception.new "Mock Error")
-    }
-
+    stub_failure
     raises(Excon::Errors::SocketError) do
       connection = Excon.new('http://127.0.0.1:9292',
           :instrumentor => SimpleInstrumentor)
@@ -144,25 +144,22 @@ Shindo.tests('Instrumentation of connections') do
 
   tests('does not generate events when not provided').returns(0) do
     subscribe(/excon/)
-    Excon.stub({:method => :get}) { |params|
-      {:body => params[:body], :headers => params[:headers], :status => 200}
-    }
-
+    stub_success
     connection = Excon.new('http://127.0.0.1:9292')
     connection.get(:idempotent => true)
     @events.count
   end
 
-  tests('allows setting the prefix').returns(true) do
+  tests('allows setting the prefix').returns(
+      ['gug.request', 'gug.retry', 'gug.retry','gug.retry', 'gug.error']) do
     subscribe(/gug/)
-    Excon.stub({:method => :get}) { |params|
-      {:body => params[:body], :headers => params[:headers], :status => 200}
-    }
-
+    stub_failure
     connection = Excon.new('http://127.0.0.1:9292',
         :instrumentor => ActiveSupport::Notifications, :instrumentor_name => 'gug')
-    connection.get(:idempotent => true)
-    @events.first.name == "gug.request"
+    raises(Excon::Errors::SocketError) do
+      connection.get(:idempotent => true)
+    end
+    @events.map(&:name)
   end
 
 
@@ -173,7 +170,6 @@ Shindo.tests('Instrumentation of connections') do
     tests('works unmocked').returns('excon.request') do
       Excon.mock = false
       subscribe(/excon/)
-
       make_request
       @events.first.name
     end
