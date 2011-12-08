@@ -70,18 +70,17 @@ module Excon
     #     @option params [Hash]   :query appended to the 'scheme://host:port/path/' in the form of '?key=value'
     #     @option params [String] :scheme The protocol; 'https' causes OpenSSL to be used
     def request(params, &block)
-      is_retry ||= false
-      if params[:idempotent] && is_retry
-        event_name = 'excon.retry'
-      else
-        event_name = 'excon.request'
-      end
       if @instrumentor
+        if params[:idempotent] && is_retry ||= false
+          event_name = 'excon.retry'
+        else
+          event_name = 'excon.request'
+        end
         @instrumentor.instrument(event_name) do
-          request_do(params, &block)
+          _request(params, &block)
         end
       else
-        request_do(params, &block)
+        _request(params, &block)
       end
     rescue => request_error
       if params[:idempotent] && [Excon::Errors::SocketError,
@@ -106,7 +105,7 @@ module Excon
       end
     end
 
-    def request_do(params, &block)
+    def _request(params, &block)
       begin
         # connection has defaults, merge in new params to override
         params = @connection.merge(params)

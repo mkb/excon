@@ -138,7 +138,7 @@ Shindo.tests('Instrumentation of connections') do
       connection.get(:idempotent => true)
     end
 
-    SimpleInstrumentor.events == ['excon.request', 'excon.retry', 'excon.retry', 
+    SimpleInstrumentor.events == ['excon.request', 'excon.retry', 'excon.retry',
         'excon.retry', 'excon.error']
   end
 
@@ -164,9 +164,4 @@ Shindo.tests('Instrumentation of connections') do
     end
   end
 end
-
-
-
-
-
 
