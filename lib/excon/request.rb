@@ -55,6 +55,19 @@ module Excon
       end
     end
     
+    def write_out_body
+      if @params[:body]
+        if @params[:body].is_a?(String)
+          socket.write(@params[:body])
+        else
+          while chunk = @params[:body].read(CHUNK_SIZE)
+            socket.write(chunk)
+          end
+        end
+      end
+    end
+    
+    
     def try_request(&block)
       begin
         @params[:headers] = @connection.attributes[:headers].merge(@params[:headers] || {})
@@ -93,17 +106,7 @@ module Excon
         # write out the request, sans body
         socket.write(request)
 
-        # write out the body
-        if @params[:body]
-          if @params[:body].is_a?(String)
-            socket.write(@params[:body])
-          else
-            while chunk = @params[:body].read(CHUNK_SIZE)
-              socket.write(chunk)
-            end
-          end
-        end
-
+        write_out_body
         # read the response
         response = Excon::Response.parse(socket, @params, &block)
 
