@@ -12,23 +12,28 @@ module Excon
     def socket
       @connection.socket
     end
+
+    def process_mock(&block)
+      @connection.invoke_stub(@params, &block)
+    end
+      
     
     def try_request(&block)
       begin
+
+
         @params[:headers] = @connection.attributes[:headers].merge(@params[:headers] || {})
         @params[:headers]['Host'] ||= '' << @params[:host] << ':' << @params[:port]
+        
+        
 
         # if path is empty or doesn't start with '/', insert one
         unless @params[:path][0, 1] == '/'
           @params[:path].insert(0, '/')
         end
-
-        unless @params[:mock]
-          socket.params = @params
-        else
-          mocked_response = @connection.invoke_stub(@params, &block)
-          return mocked_response unless mocked_response.nil?
-        end
+        
+        return process_mock(&block) if @params[:mock]
+        socket.params = @params
 
         # start with "METHOD /path"
         request = @params[:method].to_s.upcase << ' '
@@ -118,8 +123,7 @@ module Excon
         raise(Excon::Errors.status_error(@params, response))
       else
         response
-      end
-      
+      end      
     end
     
     def invoke(&block)
