@@ -37,6 +37,24 @@ module Excon
       end
     end
     
+    def set_content_length
+      # calculate content length and set to handle non-ascii
+      unless @params[:headers].has_key?('Content-Length')
+        @params[:headers]['Content-Length'] = case @params[:body]
+        when File
+          @params[:body].binmode
+          File.size(@params[:body])
+        when String
+          if FORCE_ENC
+            @params[:body].force_encoding('BINARY')
+          end
+          @params[:body].length
+        else
+          0
+        end
+      end
+    end
+    
     def try_request(&block)
       begin
         @params[:headers] = @connection.attributes[:headers].merge(@params[:headers] || {})
@@ -61,22 +79,7 @@ module Excon
         # finish first line with "HTTP/1.1\r\n"
         request << HTTP_1_1
 
-        # calculate content length and set to handle non-ascii
-        unless @params[:headers].has_key?('Content-Length')
-          @params[:headers]['Content-Length'] = case @params[:body]
-          when File
-            @params[:body].binmode
-            File.size(@params[:body])
-          when String
-            if FORCE_ENC
-              @params[:body].force_encoding('BINARY')
-            end
-            @params[:body].length
-          else
-            0
-          end
-        end
-
+        set_content_length
         # add headers to request
         for key, values in @params[:headers]
           for value in [*values]
