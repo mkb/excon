@@ -17,15 +17,30 @@ module Excon
       @connection.invoke_stub(@params, &block)
     end
       
+    def add_query
+      # add query to path, if there is one
+      case @params[:query]
+      when String
+        request << '?' << @params[:query]
+      when Hash
+        request << '?'
+        for key, values in @params[:query]
+          if values.nil?
+            request << key.to_s << '&'
+          else
+            for value in [*values]
+              request << key.to_s << '=' << CGI.escape(value.to_s) << '&'
+            end
+          end
+        end
+        request.chop! # remove trailing '&'
+      end
+    end
     
     def try_request(&block)
       begin
-
-
         @params[:headers] = @connection.attributes[:headers].merge(@params[:headers] || {})
         @params[:headers]['Host'] ||= '' << @params[:host] << ':' << @params[:port]
-        
-        
 
         # if path is empty or doesn't start with '/', insert one
         unless @params[:path][0, 1] == '/'
@@ -42,24 +57,7 @@ module Excon
         end
         request << @params[:path]
 
-        # add query to path, if there is one
-        case @params[:query]
-        when String
-          request << '?' << @params[:query]
-        when Hash
-          request << '?'
-          for key, values in @params[:query]
-            if values.nil?
-              request << key.to_s << '&'
-            else
-              for value in [*values]
-                request << key.to_s << '=' << CGI.escape(value.to_s) << '&'
-              end
-            end
-          end
-          request.chop! # remove trailing '&'
-        end
-
+        add_query
         # finish first line with "HTTP/1.1\r\n"
         request << HTTP_1_1
 
