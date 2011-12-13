@@ -17,7 +17,7 @@ module Excon
       @connection.invoke_stub(@params, &block)
     end
       
-    def add_query
+    def add_query(request)
       # add query to path, if there is one
       case @params[:query]
       when String
@@ -57,7 +57,7 @@ module Excon
         end
         request << @params[:path]
 
-        add_query
+        add_query(request)
         # finish first line with "HTTP/1.1\r\n"
         request << HTTP_1_1
 
