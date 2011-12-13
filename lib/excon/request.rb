@@ -8,7 +8,7 @@ module Excon
       @connection = connection
       @params = params
     end
-    
+
     def socket
       @connection.socket
     end
@@ -16,9 +16,8 @@ module Excon
     def process_mock(&block)
       @connection.invoke_stub(@params, &block)
     end
-      
+
     def add_query(request)
-      # add query to path, if there is one
       case @params[:query]
       when String
         request << '?' << @params[:query]
@@ -36,7 +35,7 @@ module Excon
         request.chop! # remove trailing '&'
       end
     end
-    
+
     def set_content_length
       # calculate content length and set to handle non-ascii
       unless @params[:headers].has_key?('Content-Length')
@@ -54,7 +53,7 @@ module Excon
         end
       end
     end
-    
+
     def write_out_body
       if @params[:body]
         if @params[:body].is_a?(String)
@@ -66,26 +65,12 @@ module Excon
         end
       end
     end
-    
-    
-    def try_request(&block)
-      begin
-        @params[:headers] = @connection.attributes[:headers].merge(@params[:headers] || {})
-        @params[:headers]['Host'] ||= '' << @params[:host] << ':' << @params[:port]
 
-        # if path is empty or doesn't start with '/', insert one
-        unless @params[:path][0, 1] == '/'
-          @params[:path].insert(0, '/')
-        end
-        
-        return process_mock(&block) if @params[:mock]
-        socket.params = @params
-
+    def request_string
+      @request_string ||= begin
         # start with "METHOD /path"
         request = @params[:method].to_s.upcase << ' '
-        if @proxy
-          request << @params[:scheme] << '://' << @params[:host] << ':' << @params[:port]
-        end
+        request << @params[:scheme] << '://' << @params[:host] << ':' << @params[:port] if @proxy
         request << @params[:path]
 
         add_query(request)
@@ -102,12 +87,25 @@ module Excon
 
         # add additional "\r\n" to indicate end of headers
         request << CR_NL
+        request
+      end
+    end
 
-        # write out the request, sans body
-        socket.write(request)
+    def try_request(&block)
+      begin
+        @params[:headers] = @connection.attributes[:headers].merge(@params[:headers] || {})
+        @params[:headers]['Host'] ||= '' << @params[:host] << ':' << @params[:port]
 
+        # if path is empty or doesn't start with '/', insert one
+        unless @params[:path][0, 1] == '/'
+          @params[:path].insert(0, '/')
+        end
+
+        return process_mock(&block) if @params[:mock]
+        socket.params = @params
+
+        socket.write(request_string)
         write_out_body
-        # read the response
         response = Excon::Response.parse(socket, @params, &block)
 
         if response.headers['Connection'] == 'close'
@@ -127,9 +125,9 @@ module Excon
         raise(Excon::Errors.status_error(@params, response))
       else
         response
-      end      
+      end
     end
-    
+
     def invoke(&block)
       try_request(&block)
     rescue => request_error
