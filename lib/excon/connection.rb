@@ -20,7 +20,7 @@ module Excon
     #     @option params [Fixnum] :retry_limit Set how many times we'll retry a failed request.  (Default 4)
     def initialize(url, params = {})
       uri = URI.parse(url)
-      @connection = {
+      @attributes = {
         :connect_timeout  => 60,
         :headers          => {},
         :host             => uri.host,
@@ -42,7 +42,7 @@ module Excon
 
       self.retry_limit = params[:retry_limit] || DEFAULT_RETRY_LIMIT
 
-      if @connection[:scheme] == 'https'
+      if @attributes[:scheme] == 'https'
         # use https_proxy if that has been specified
         if ENV.has_key?('https_proxy')
           @proxy = setup_proxy(ENV['https_proxy'])
@@ -50,10 +50,10 @@ module Excon
       end
 
       if @proxy
-        @connection[:headers]['Proxy-Connection'] ||= 'Keep-Alive'
+        @attributes[:headers]['Proxy-Connection'] ||= 'Keep-Alive'
       end
 
-      @socket_key = '' << @connection[:host] << ':' << @connection[:port]
+      @socket_key = '' << @attributes[:host] << ':' << @attributes[:port]
       reset
     end
 
@@ -70,8 +70,8 @@ module Excon
     def request(params, &block)
       begin
         # connection has defaults, merge in new params to override
-        params = @connection.merge(params)
-        params[:headers] = @connection[:headers].merge(params[:headers] || {})
+        params = @attributes.merge(params)
+        params[:headers] = @attributes[:headers].merge(params[:headers] || {})
         params[:headers]['Host'] ||= '' << params[:host] << ':' << params[:port]
 
         # if path is empty or doesn't start with '/', insert one
@@ -243,10 +243,10 @@ module Excon
   private
 
     def socket
-      sockets[@socket_key] ||= if @connection[:scheme] == 'https'
-        Excon::SSLSocket.new(@connection, @proxy)
+      sockets[@socket_key] ||= if @attributes[:scheme] == 'https'
+        Excon::SSLSocket.new(@attributes, @proxy)
       else
-        Excon::Socket.new(@connection, @proxy)
+        Excon::Socket.new(@attributes, @proxy)
       end
     end
 
