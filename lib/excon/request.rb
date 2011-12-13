@@ -12,7 +12,7 @@ module Excon
       @connection.socket
     end
     
-    def invoke(params, &block)
+    def try_request(params, &block)
       begin
         # connection has defaults, merge in new params to override
         params = @connection.attributes.merge(params)
@@ -120,7 +120,11 @@ module Excon
       else
         response
       end
-
+      
+    end
+    
+    def invoke(params, &block)
+      try_request(params, &block)
     rescue => request_error
       if params[:idempotent] && [Excon::Errors::SocketError, Excon::Errors::HTTPStatusError].any? {|ex| request_error.kind_of? ex }
         retries_remaining ||= @connection.retry_limit
