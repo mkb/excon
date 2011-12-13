@@ -66,8 +66,8 @@ module Excon
     #     @option params [Hash]   :query appended to the 'scheme://host:port/path/' in the form of '?key=value'
     #     @option params [String] :scheme The protocol; 'https' causes OpenSSL to be used
     def request(params, &block)
-      req = Excon::Request.new(self)
-      req.invoke(params, &block)
+      req = Excon::Request.new(self, @attributes.merge(params))
+      req.invoke(&block)
     end
     
     def invoke_stub(params)
