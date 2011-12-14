@@ -19,16 +19,18 @@ module Excon
     def initialize(url, params = {})
       uri = URI.parse(url)
       @attributes = {
-        :connect_timeout  => 60,
-        :headers          => {},
-        :host             => uri.host,
-        :mock             => Excon.mock,
-        :path             => uri.path,
-        :port             => uri.port.to_s,
-        :query            => uri.query,
-        :read_timeout     => 60,
-        :scheme           => uri.scheme,
-        :write_timeout    => 60
+        :connect_timeout   => 60,
+        :headers           => {},
+        :host              => uri.host,
+        :mock              => Excon.mock,
+        :path              => uri.path,
+        :port              => uri.port.to_s,
+        :query             => uri.query,
+        :read_timeout      => 60,
+        :scheme            => uri.scheme,
+        :write_timeout     => 60,
+        :instrumentor      => nil,
+        :instrumentor_name => 'excon'
       }.merge!(params)
 
       # use proxy from the environment if present
@@ -69,7 +71,7 @@ module Excon
       req = Excon::Request.new(self, @attributes.merge(params).merge({ :retry_limit => retry_limit }))
       req.invoke(&block)
     end
-    
+
     def invoke_stub(params)
       for stub, response in Excon.stubs
         # all specified non-headers params match and no headers were specified or all specified headers match

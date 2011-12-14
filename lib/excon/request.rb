@@ -17,12 +17,29 @@ module Excon
       invoke_with_retries(@params[:retry_limit], &block)
     end
 
+    def instrumentor_name
+      @params[:instrumentor_name] || 'excon'
+    end
+
     def invoke_with_retries(retries_remaining, &block)
-      try_request(&block)
+      if @params[:instrumentor]
+        if @params[:idempotent] && is_retry ||= false
+          event_name = "#{instrumentor_name}.retry"
+        else
+          event_name = "#{instrumentor_name}.request"
+        end
+
+        @params[:instrumentor].instrument(event_name, @params) do
+          try_request(&block)
+        end
+      else
+        try_request(&block)
+      end
     rescue => request_error
       if @params[:idempotent] && [Excon::Errors::SocketError, Excon::Errors::HTTPStatusError].any? {|ex| request_error.kind_of? ex }
         retries_remaining -= 1
         if retries_remaining > 0
+          is_retry = true
           if @params[:body].respond_to?(:pos=)
             @params[:body].pos = 0
           end
