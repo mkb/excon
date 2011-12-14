@@ -71,11 +71,9 @@ Shindo.tests('Instrumentation of connections') do
   end
 
   tests('basic notification').returns('excon.request') do
-    debugger
     subscribe(/excon/)
     stub_success
     make_request
-    puts "@events: #{@events}"
     @events.first.name
   end
 

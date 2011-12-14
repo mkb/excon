@@ -45,9 +45,11 @@ module Excon
           end
           retry
         else
+          @params[:instrumentor].instrument("#{instrumentor_name}.error") if @params[:instrumentor]
           raise(request_error)
         end
       else
+        @params[:instrumentor].instrument("#{instrumentor_name}.error") if @params[:instrumentor]
         raise(request_error)
       end
     end
